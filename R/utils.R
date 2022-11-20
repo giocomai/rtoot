@@ -53,9 +53,16 @@ prepare_url <- function(instance){
 
 # process the header of a get request
 parse_header <- function(header){
-  df <- tibble::tibble(rate_limit=header[["x-ratelimit-limit"]],
-                       rate_remaining=header[["x-ratelimit-remaining"]],
-                       rate_reset=format_date(header[["x-ratelimit-reset"]]))
+  if ("x-ratelimit-limit"%in%names(header)) {
+    df <- tibble::tibble(rate_limit=header[["x-ratelimit-limit"]],
+                         rate_remaining=header[["x-ratelimit-remaining"]],
+                         rate_reset=format_date(header[["x-ratelimit-reset"]]))
+  } else {
+    df <- tibble::tibble(rate_limit=as.character(NA),
+                         rate_remaining=as.character(NA),
+                         rate_reset=format_date(NA))
+  }
+
   if("link"%in%names(header)){
     vars_to_search <- c("max_id","min_id","since_id")
     links <- regmatches(header[["link"]], gregexpr("https[^>]+", header[["link"]]))[[1]]
@@ -97,7 +104,7 @@ process_request <- function(token = NULL,
                             instance = instance, params = params,
                             anonymous = anonymous)
 
-    if(rate_limit_remaining(tmp)==0){
+    if(is.na(rate_limit_remaining(tmp))==FALSE&rate_limit_remaining(tmp)==0){
       if(isTRUE(retryonratelimit)){
         wait_until(attr(tmp,"headers")[["rate_reset"]],verbose)
       } else{
